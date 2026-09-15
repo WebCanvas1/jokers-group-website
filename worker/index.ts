@@ -44,6 +44,7 @@ async function api(request: Request, env: Env, url: URL) {
 
   if (path === '/api/login' && request.method === 'POST') {
     const body = await request.json<{ email?: string; password?: string }>();
+    if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD || !env.SESSION_SECRET) return json({ error: 'Admin login is not configured' }, 503);
     if (body.email !== env.ADMIN_EMAIL || body.password !== env.ADMIN_PASSWORD) return json({ error: 'Invalid login' }, 401);
     return json({ token: await makeToken(body.email, env.SESSION_SECRET) });
   }
@@ -58,15 +59,15 @@ async function api(request: Request, env: Env, url: URL) {
   if (path === '/api/portfolio_projects' && request.method === 'POST') {
     if (!(await isAdmin(request, env))) return json({ error: 'Unauthorised' }, 401);
     const b = await request.json<Record<string, string>>();
-    const id = crypto.randomUUID();
-    await env.DB.prepare('INSERT INTO portfolio_projects (id,title,category,description,image_url,alt_text) VALUES (?,?,?,?,?,?)')
-      .bind(id, b.title || '', b.category || 'Business Signage', b.description || '', b.image_url || '', b.alt_text || '').run();
-    return json({ data: { id, ...b } }, 201);
+    const result = await env.DB.prepare('INSERT INTO portfolio_projects (title,category,description,image_url,alt_text) VALUES (?,?,?,?,?)')
+      .bind(b.title || '', b.category || 'Business Signage', b.description || '', b.image_url || '', b.alt_text || '').run();
+    return json({ data: { id: result.meta.last_row_id, ...b } }, 201);
   }
 
   if (path.startsWith('/api/portfolio_projects/') && request.method === 'DELETE') {
     if (!(await isAdmin(request, env))) return json({ error: 'Unauthorised' }, 401);
-    const id = decodeURIComponent(path.split('/').pop() || '');
+    const id = Number(decodeURIComponent(path.split('/').pop() || ''));
+    if (!Number.isInteger(id)) return json({ error: 'Invalid project ID' }, 400);
     await env.DB.prepare('DELETE FROM portfolio_projects WHERE id = ?').bind(id).run();
     return json({ data: { id } });
   }
@@ -74,10 +75,9 @@ async function api(request: Request, env: Env, url: URL) {
   if (path === '/api/quote_enquiries' && request.method === 'POST') {
     const b = await request.json<Record<string, string>>();
     if (!b.name || !b.service || !b.description) return json({ error: 'Missing required fields' }, 400);
-    const id = crypto.randomUUID();
-    await env.DB.prepare('INSERT INTO quote_enquiries (id,name,organisation,phone,email,service,description,quantity,timeframe) VALUES (?,?,?,?,?,?,?,?,?)')
-      .bind(id, b.name, b.organisation || '', b.phone || '', b.email || '', b.service, b.description, b.quantity || '', b.timeframe || '').run();
-    return json({ data: { id } }, 201);
+    const result = await env.DB.prepare('INSERT INTO quote_enquiries (name,organisation,phone,email,service,description,quantity,timeframe) VALUES (?,?,?,?,?,?,?,?)')
+      .bind(b.name, b.organisation || '', b.phone || '', b.email || '', b.service, b.description, b.quantity || '', b.timeframe || '').run();
+    return json({ data: { id: result.meta.last_row_id } }, 201);
   }
 
   if (path === '/api/quote_enquiries' && request.method === 'GET') {
