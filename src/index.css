@@ -53,6 +53,20 @@ main, header, footer, section { width: 100%; }
 .field:focus { border-color: var(--lime); outline: none; }
 select.field { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem; }
 
+@media (min-width: 1440px) {
+  #top > div {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: max(2rem, calc((100vw - 1400px) / 2 + 2rem));
+    padding-right: 0;
+  }
+  #top > div > div:last-child {
+    height: 100svh;
+    min-height: 600px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
