@@ -75,8 +75,36 @@ async function api(request: Request, env: Env, url: URL) {
   if (path === '/api/quote_enquiries' && request.method === 'POST') {
     const b = await request.json<Record<string, string>>();
     if (!b.name || !b.service || !b.description) return json({ error: 'Missing required fields' }, 400);
+
     const result = await env.DB.prepare('INSERT INTO quote_enquiries (name,organisation,phone,email,service,description,quantity,timeframe) VALUES (?,?,?,?,?,?,?,?)')
       .bind(b.name, b.organisation || '', b.phone || '', b.email || '', b.service, b.description, b.quantity || '', b.timeframe || '').run();
+
+    try {
+      const emailResponse = await fetch('https://formsubmit.co/ajax/Rhett.jokersgroup@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          _subject: `New Joker's Group enquiry from ${b.name}`,
+          _template: 'table',
+          _captcha: 'false',
+          Name: b.name,
+          Organisation: b.organisation || 'Not provided',
+          Phone: b.phone || 'Not provided',
+          Email: b.email || 'Not provided',
+          Service: b.service,
+          Description: b.description,
+          Quantity: b.quantity || 'Not provided',
+          Timeframe: b.timeframe || 'Not provided',
+        }),
+      });
+      if (!emailResponse.ok) console.error('FormSubmit email failed', emailResponse.status);
+    } catch (error) {
+      console.error('FormSubmit email error', error);
+    }
+
     return json({ data: { id: result.meta.last_row_id } }, 201);
   }
 
