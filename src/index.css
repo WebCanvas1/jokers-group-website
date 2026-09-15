@@ -20,8 +20,11 @@
   background: var(--bg);
 }
 
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
-body { margin: 0; min-width: 320px; background: var(--bg); overflow-x: hidden; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; width: 100%; margin: 0; padding: 0; }
+body { margin: 0; padding: 0; min-width: 320px; width: 100%; max-width: none; background: var(--bg); overflow-x: hidden; }
+#root { width: 100%; max-width: none; margin: 0; padding: 0; }
+#root > div { width: 100%; max-width: none; margin: 0; }
+main, header, footer, section { width: 100%; }
 * { box-sizing: border-box; }
 ::selection { color: #050505; background: var(--lime); }
 
