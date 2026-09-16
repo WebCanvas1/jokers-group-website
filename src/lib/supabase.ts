@@ -2,6 +2,7 @@ type Row = Record<string, unknown>;
 
 const API = '/api';
 const TOKEN_KEY = 'jokers_admin_token';
+const QUOTE_EMAIL = 'Rhett.jokersgroup@gmail.com';
 
 async function request(path: string, init: RequestInit = {}) {
   const token = localStorage.getItem(TOKEN_KEY);
@@ -12,6 +13,40 @@ async function request(path: string, init: RequestInit = {}) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || 'Request failed');
   return payload;
+}
+
+async function sendQuoteEmail(payload: Row | Row[]) {
+  const row = Array.isArray(payload) ? payload[0] : payload;
+  if (!row) throw new Error('Missing enquiry details');
+
+  const response = await fetch(`https://formsubmit.co/ajax/${QUOTE_EMAIL}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      _subject: "New website enquiry - Joker's Group",
+      _template: 'table',
+      name: row.name ?? '',
+      organisation: row.organisation ?? '',
+      contact: row.email || row.phone || '',
+      phone: row.phone ?? '',
+      email: row.email ?? '',
+      service: row.service ?? '',
+      project_details: row.description ?? '',
+      quantity: row.quantity ?? '',
+      preferred_contact: row.timeframe ?? '',
+      source: "Joker's Group website",
+    }),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.success === false) {
+    throw new Error(result.message || 'Unable to send enquiry email');
+  }
+
+  return result;
 }
 
 class QueryBuilder {
@@ -35,6 +70,19 @@ class QueryBuilder {
         return { data: payload.data ?? [], error: null };
       }
       if (this.action === 'insert') {
+        if (this.table === 'quote_enquiries' && this.payload) {
+          const emailResult = await sendQuoteEmail(this.payload);
+
+          // Keep a copy in the site's database for the owner dashboard when available.
+          try {
+            await request(`/${this.table}`, { method: 'POST', body: JSON.stringify(this.payload) });
+          } catch (storageError) {
+            console.warn('Enquiry email sent, but database storage failed:', storageError);
+          }
+
+          return { data: emailResult, error: null };
+        }
+
         const payload = await request(`/${this.table}`, { method: 'POST', body: JSON.stringify(this.payload) });
         return { data: payload.data ?? null, error: null };
       }
