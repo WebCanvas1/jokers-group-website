@@ -474,8 +474,18 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
   const signOut = async () => { await supabase.auth.signOut(); close(); };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-100 p-4 md:p-8">
-      <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xl md:p-10">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#eef2f6] p-4 md:p-8">
+      <div className="admin-light mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xl md:p-10">
+        <style>{`
+          .admin-light .kicker { color:#64748b !important; }
+          .admin-light .display { color:#0f172a !important; }
+          .admin-light .field { background:#fff !important; color:#0f172a !important; border:1px solid #cbd5e1 !important; }
+          .admin-light .field::placeholder { color:#94a3b8 !important; }
+          .admin-light label { color:#475569 !important; }
+          .admin-light p { color:#475569; }
+          .admin-light .btn-outline { color:#334155 !important; border-color:#cbd5e1 !important; background:#fff !important; }
+          .admin-light .btn-outline:hover { background:#f8fafc !important; }
+        `}</style>
         <div className="flex items-start justify-between">
           <div>
             <p className="kicker">Joker's Group / Owner Area</p>
