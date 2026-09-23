@@ -49,6 +49,19 @@ async function sendQuoteEmail(payload: Row | Row[]) {
   return result;
 }
 
+export async function getSiteContent(): Promise<Record<string,string>> {
+  const payload = await request('/site_content');
+  return payload.data ?? {};
+}
+export async function saveSiteContent(settings: Record<string,string>) {
+  return request('/site_content', { method: 'POST', body: JSON.stringify({ settings }) });
+}
+export async function uploadSiteImage(file: File): Promise<string> {
+  const form = new FormData(); form.append('file', file);
+  const payload = await request('/upload', { method: 'POST', body: form });
+  return payload.data.url;
+}
+
 class QueryBuilder {
   private table: string;
   private action: 'select' | 'insert' | 'delete' = 'select';
