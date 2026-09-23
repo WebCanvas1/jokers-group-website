@@ -66,7 +66,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [category, setCategory] = useState<Category>('All');
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>(starterProjects);
   const [lightbox, setLightbox] = useState<Project | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
@@ -82,7 +82,9 @@ function App() {
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from('portfolio_projects').select('id,title,category,description,image_url,alt_text').order('created_at', { ascending: false });
-      setProjects((data as Project[] | null) ?? []);
+      const saved = (data as Project[] | null) ?? [];
+      // Keep the supplied portfolio visible until it has been migrated into D1.
+      setProjects(saved.length ? saved : starterProjects);
     };
     load();
     getSiteContent().then((saved) => setContent((current) => ({...current,...saved}))).catch(() => {});
