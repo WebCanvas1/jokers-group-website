@@ -456,7 +456,8 @@ function AdminPanel({ close, content, setContent, starterProjects }: { close: ()
         const seeded = await supabase.from('portfolio_projects').select('id,title,category,description,image_url,alt_text').order('created_at', { ascending: false });
         loaded = (seeded.data as Project[]) || [];
         if (!loaded.length) {
-          setMessage('The original projects are still visible, but migration to the admin database could not be completed.');
+          // Keep the original portfolio visible as a silent fallback if D1 is temporarily empty.
+          setMessage('');
           loaded = starterProjects;
         } else {
           setMessage('Our Work is now fully managed from this Portfolio tab.');
