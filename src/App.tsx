@@ -450,14 +450,12 @@ function AdminPanel({ close, content, setContent, starterProjects }: { close: ()
       let loaded = pj.data as Project[];
       if (!loaded.length) {
         setMessage('Setting up the existing Our Work projects...');
-        let migrationFailed = false;
         for (const p of starterProjects) {
-          const { error: seedError } = await supabase.from('portfolio_projects').insert({ title:p.title, category:p.category, description:p.description, image_url:p.image_url, alt_text:p.alt_text });
-          if (seedError) migrationFailed = true;
+          await supabase.from('portfolio_projects').insert({ title:p.title, category:p.category, description:p.description, image_url:p.image_url, alt_text:p.alt_text });
         }
         const seeded = await supabase.from('portfolio_projects').select('id,title,category,description,image_url,alt_text').order('created_at', { ascending: false });
         loaded = (seeded.data as Project[]) || [];
-        if (!loaded.length || migrationFailed) {
+        if (!loaded.length) {
           setMessage('The original projects are still visible, but migration to the admin database could not be completed.');
           loaded = starterProjects;
         } else {
