@@ -98,6 +98,16 @@ async function api(request: Request, env: Env, url: URL) {
     return json({ data: { id, ...b } }, 201);
   }
 
+  if (path.startsWith('/api/portfolio_projects/') && request.method === 'PUT') {
+    if (!(await isAdmin(request, env))) return json({ error: 'Unauthorised' }, 401);
+    const id = decodeURIComponent(path.split('/').pop() || '');
+    if (!id) return json({ error: 'Invalid project ID' }, 400);
+    const b = await request.json<Record<string, string>>();
+    await env.DB.prepare('UPDATE portfolio_projects SET title=?, category=?, description=?, image_url=?, alt_text=? WHERE id=?')
+      .bind(b.title || '', b.category || 'Business Signage', b.description || '', b.image_url || '', b.alt_text || '', id).run();
+    return json({ data: { id, ...b } });
+  }
+
   if (path.startsWith('/api/portfolio_projects/') && request.method === 'DELETE') {
     if (!(await isAdmin(request, env))) return json({ error: 'Unauthorised' }, 401);
     const id = decodeURIComponent(path.split('/').pop() || '');
