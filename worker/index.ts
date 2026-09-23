@@ -46,8 +46,10 @@ async function api(request: Request, env: Env, url: URL) {
   if (path === '/api/login' && request.method === 'POST') {
     const body = await request.json<{ email?: string; password?: string }>();
     if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD || !env.SESSION_SECRET) return json({ error: 'Admin login is not configured' }, 503);
-    if (body.email !== env.ADMIN_EMAIL || body.password !== env.ADMIN_PASSWORD) return json({ error: 'Invalid login' }, 401);
-    return json({ token: await makeToken(body.email, env.SESSION_SECRET) });
+    const suppliedEmail = (body.email || '').trim().toLowerCase();
+    const configuredEmail = env.ADMIN_EMAIL.trim().toLowerCase();
+    if (suppliedEmail !== configuredEmail || body.password !== env.ADMIN_PASSWORD) return json({ error: 'Invalid login' }, 401);
+    return json({ token: await makeToken(env.ADMIN_EMAIL, env.SESSION_SECRET) });
   }
 
   if (path === '/api/admin/check') return (await isAdmin(request, env)) ? json({ ok: true }) : json({ error: 'Unauthorised' }, 401);
