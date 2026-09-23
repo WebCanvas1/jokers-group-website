@@ -23,3 +23,9 @@ CREATE TABLE IF NOT EXISTS quote_enquiries (
 
 CREATE INDEX IF NOT EXISTS idx_portfolio_created_at ON portfolio_projects(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_enquiries_created_at ON quote_enquiries(created_at DESC);
+
+
+CREATE TABLE IF NOT EXISTS site_content (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL DEFAULT ''
+);
