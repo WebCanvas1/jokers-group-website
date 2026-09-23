@@ -483,6 +483,9 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
           .admin-light .field::placeholder { color:#94a3b8 !important; }
           .admin-light label { color:#475569 !important; }
           .admin-light p { color:#475569; }
+          .admin-light strong, .admin-light a { color:#0f172a !important; }
+          .admin-light .text-white, .admin-light .text-white\/70, .admin-light .text-white\/60, .admin-light .text-white\/50, .admin-light .text-white\/40, .admin-light .text-white\/80 { color:#475569 !important; }
+          .admin-light .text-red-400, .admin-light .text-red-400\/70 { color:#dc2626 !important; }
           .admin-light .btn-outline { color:#334155 !important; border-color:#cbd5e1 !important; background:#fff !important; }
           .admin-light .btn-outline:hover { background:#f8fafc !important; }
         `}</style>
@@ -491,7 +494,7 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
             <p className="kicker">Joker's Group / Owner Area</p>
             <h2 className="display mt-3 text-3xl font-bold uppercase text-white">{mode === 'login' ? 'Owner Login' : 'Dashboard'}</h2>
           </div>
-          <button onClick={close} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-white/80"><X size={18} /></button>
+          <button onClick={close} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"><X size={18} /></button>
         </div>
 
         {mode === 'login' ? (
@@ -506,7 +509,7 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
           <div className="mt-8">
             <div className="mb-6 flex gap-1 border-b border-slate-200 pb-1">
               {(['enquiries', 'portfolio', 'content'] as const).map((t) => (
-                <button key={t} onClick={() => setTab(t)} className={`px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition ${tab === t ? 'text-[#B9FF00]' : 'text-white/50 hover:text-white/80'}`}>{t}</button>
+                <button key={t} onClick={() => setTab(t)} className={`px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition ${tab === t ? 'border-b-2 border-slate-900 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}>{t}</button>
               ))}
             </div>
 
@@ -516,7 +519,7 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
                   <div key={enq.id} className="rounded-lg border border-slate-200 p-4">
                     <div className="flex flex-wrap justify-between gap-2">
                       <strong className="text-sm text-white">{enq.name}</strong>
-                      <span className="text-[10px] uppercase tracking-wider text-[#B9FF00]">{enq.service}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-700">{enq.service}</span>
                     </div>
                     <a href={`mailto:${enq.email}`} className="mt-1.5 block text-xs text-white/70">{enq.email}</a>
                     <p className="mt-0.5 text-xs text-white/60">{enq.phone}</p>
@@ -588,7 +591,7 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
               </div>
             )}
 
-            {message && <p className="mt-4 text-sm text-[#B9FF00]">{message}</p>}
+            {message && <p className="mt-4 rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">{message}</p>}
             <button onClick={signOut} className="btn btn-outline mt-6">Sign Out</button>
           </div>
         )}
