@@ -1,6 +1,7 @@
 interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
+  IMAGES?: R2Bucket;
   ADMIN_EMAIL: string;
   ADMIN_PASSWORD: string;
   SESSION_SECRET: string;
@@ -50,6 +51,35 @@ async function api(request: Request, env: Env, url: URL) {
   }
 
   if (path === '/api/admin/check') return (await isAdmin(request, env)) ? json({ ok: true }) : json({ error: 'Unauthorised' }, 401);
+
+  if (path === '/api/site_content' && request.method === 'GET') {
+    const { results } = await env.DB.prepare('SELECT key,value FROM site_content').all();
+    return json({ data: Object.fromEntries((results as {key:string;value:string}[]).map((r) => [r.key, r.value])) });
+  }
+
+  if (path === '/api/site_content' && request.method === 'POST') {
+    if (!(await isAdmin(request, env))) return json({ error: 'Unauthorised' }, 401);
+    const b = await request.json<{ settings?: Record<string,string> }>();
+    const entries = Object.entries(b.settings || {});
+    if (entries.length) {
+      const stmt = env.DB.prepare('INSERT INTO site_content(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
+      await env.DB.batch(entries.map(([key,value]) => stmt.bind(key, String(value ?? ''))));
+    }
+    return json({ data: b.settings || {} });
+  }
+
+  if (path === '/api/upload' && request.method === 'POST') {
+    if (!(await isAdmin(request, env))) return json({ error: 'Unauthorised' }, 401);
+    if (!env.IMAGES) return json({ error: 'Image storage is not configured' }, 503);
+    const form = await request.formData();
+    const file = form.get('file');
+    if (!(file instanceof File) || !file.type.startsWith('image/')) return json({ error: 'Please choose an image file' }, 400);
+    if (file.size > 10 * 1024 * 1024) return json({ error: 'Images must be 10 MB or smaller' }, 400);
+    const ext = (file.name.split('.').pop() || 'jpg').replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const key = `uploads/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    await env.IMAGES.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
+    return json({ data: { url: `/media/${encodeURIComponent(key).replace(/%2F/g, '/')}` } });
+  }
 
   if (path === '/api/portfolio_projects' && request.method === 'GET') {
     const { results } = await env.DB.prepare('SELECT id,title,category,description,image_url,alt_text,created_at FROM portfolio_projects ORDER BY created_at DESC').all();
@@ -121,6 +151,17 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/')) return api(request, env, url);
+    if (url.pathname.startsWith('/media/') && request.method === 'GET') {
+      if (!env.IMAGES) return new Response('Image storage is not configured', { status: 404 });
+      const key = decodeURIComponent(url.pathname.slice('/media/'.length));
+      const object = await env.IMAGES.get(key);
+      if (!object) return new Response('Not found', { status: 404 });
+      const headers = new Headers();
+      object.writeHttpMetadata(headers);
+      headers.set('etag', object.httpEtag);
+      headers.set('cache-control', 'public, max-age=31536000, immutable');
+      return new Response(object.body, { headers });
+    }
     return env.ASSETS.fetch(request);
   },
 };
