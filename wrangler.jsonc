@@ -12,7 +12,7 @@
   "r2_buckets": [
     {
       "binding": "IMAGES",
-      "bucket_name": "jokers-group-images"
+      "bucket_name": "jokers-group-image"
     }
   ],
   "d1_databases": [
