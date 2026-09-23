@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ArrowRight, ArrowUpRight, Check, Facebook, Mail, Menu, X } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getSiteContent, saveSiteContent, supabase, uploadSiteImage } from '@/lib/supabase';
 
 type Category = 'All' | 'Business Signage' | 'Vehicle Graphics' | 'Custom Signs' | 'Apparel & DTF' | 'Stickers & Decals' | 'Promotional Products';
 type Project = { id: string; title: string; category: Exclude<Category, 'All'>; description: string; image_url: string; alt_text: string };
@@ -38,6 +38,23 @@ const starterProjects: Project[] = [
 
 const filters: Category[] = ['All', 'Business Signage', 'Vehicle Graphics', 'Custom Signs', 'Apparel & DTF', 'Stickers & Decals', 'Promotional Products'];
 
+const defaultContent: Record<string,string> = {
+  hero_kicker:'Jokers Group • Geelong', hero_title:'Make your brand', hero_accent:'impossible to ignore.',
+  hero_copy:'{content.hero_copy}',
+  hero_location:'Proudly serving Geelong & surrounding areas', hero_image:img.heroVehicle,
+  services_kicker:'What we do', services_title:'Everything your brand needs. One creative team.',
+  work_kicker:'Made in Geelong. Made to stand out.', work_title:'Our Work',
+  work_copy:'From vehicles and shopfronts to apparel, decals and custom signage — see how we help Geelong businesses bring their brands to life.',
+  why_kicker:'Why us', why_title:'Why Jokers?',
+  geelong_kicker:'Proudly Geelong', geelong_title:'Local knowledge. Big brand energy.',
+  geelong_copy:'{content.geelong_copy}', geelong_image:img.geelong,
+  cta_title:"Got an idea? Let's make it stand out.", cta_copy:"{content.cta_copy}",
+  quote_kicker:'Start here', quote_title:"Let's create something that gets noticed.",
+  email:'Rhett.jokersgroup@gmail.com', facebook:'https://www.facebook.com/Jokersgroup/',
+  service_area:'Proudly servicing Geelong & surrounding areas',
+  footer_tagline:'More than just signage.', logo_image:'/assets/images/logos/793580465_2303158203850882_7149715947328454130_n.jpg',
+  ...Object.fromEntries(services.flatMap((x,i)=>[[`service_${i+1}_title`,x.title],[`service_${i+1}_copy`,x.copy],[`service_${i+1}_image`,x.image]])),
+};
 const whyPoints = [
   { num: '01', title: 'One Team', copy: 'Multiple branding solutions under one roof.' },
   { num: '02', title: 'Local', copy: 'Proudly serving Geelong and surrounding areas.' },
@@ -54,6 +71,7 @@ function App() {
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
   const [adminOpen, setAdminOpen] = useState(false);
+  const [content, setContent] = useState<Record<string,string>>(defaultContent);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -70,6 +88,7 @@ function App() {
       }
     };
     load();
+    getSiteContent().then((saved) => setContent((current) => ({...current,...saved}))).catch(() => {});
   }, []);
 
   const visibleProjects = useMemo(() => (category === 'All' ? projects : projects.filter((p) => p.category === category)), [category, projects]);
@@ -96,30 +115,30 @@ function App() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#050505] text-white">
-      <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} scrolled={scrolled} setAdminOpen={setAdminOpen} />
+      <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} scrolled={scrolled} setAdminOpen={setAdminOpen} content={content} />
       <main>
-        <Hero />
-        <Services />
+        <Hero content={content} />
+        <Services content={content} />
         <Work projects={visibleProjects} category={category} setCategory={setCategory} setLightbox={setLightbox} />
-        <Why />
-        <Geelong />
-        <CTA />
-        <QuoteForm submitQuote={submitQuote} submitted={submitted} formError={formError} />
+        <Why content={content} />
+        <Geelong content={content} />
+        <CTA content={content} />
+        <QuoteForm submitQuote={submitQuote} submitted={submitted} formError={formError} content={content} />
       </main>
-      <Footer setAdminOpen={setAdminOpen} />
+      <Footer setAdminOpen={setAdminOpen} content={content} />
       {lightbox && <Lightbox project={lightbox} close={() => setLightbox(null)} />}
-      {adminOpen && <AdminPanel close={() => setAdminOpen(false)} />}
+      {adminOpen && <AdminPanel close={() => setAdminOpen(false)} content={content} setContent={setContent} />}
     </div>
   );
 }
 
-function Header({ menuOpen, setMenuOpen, scrolled, setAdminOpen }: { menuOpen: boolean; setMenuOpen: (v: boolean) => void; scrolled: boolean; setAdminOpen: (v: boolean) => void }) {
+function Header({ menuOpen, setMenuOpen, scrolled, setAdminOpen, content }: { menuOpen: boolean; setMenuOpen: (v: boolean) => void; scrolled: boolean; setAdminOpen: (v: boolean) => void; content: Record<string,string> }) {
   const links: [string, string][] = [['Home', 'top'], ['Services', 'services'], ['Our Work', 'work'], ['Contact', 'contact']];
   return (
     <header className={`fixed top-0 z-40 w-full transition-all duration-300 ${scrolled ? 'bg-black/85 backdrop-blur-lg border-b border-white/[0.06]' : 'bg-transparent'}`}>
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-5 md:px-8">
         <a href="#top" className="flex items-center">
-          <img src="/assets/images/logos/793580465_2303158203850882_7149715947328454130_n.jpg" alt="Joker's Group Geelong" className="h-11 w-auto object-contain" />
+          <img src={content.logo_image} alt="Joker's Group Geelong" className="h-11 w-auto object-contain" />
         </a>
         <nav className="hidden items-center gap-8 lg:flex">
           {links.map(([label, id]) => (
@@ -145,15 +164,15 @@ function Header({ menuOpen, setMenuOpen, scrolled, setAdminOpen }: { menuOpen: b
   );
 }
 
-function Hero() {
+function Hero({ content }: { content: Record<string,string> }) {
   return (
     <section id="top" className="relative min-h-[100svh] overflow-hidden bg-[#050505]">
       <div className="mx-auto grid min-h-[100svh] max-w-[1400px] grid-cols-1 items-center px-5 pt-20 pb-12 md:px-8 lg:grid-cols-[1.2fr_0.8fr] lg:pt-0 lg:pb-0">
         <div className="order-2 lg:order-1">
-          <p className="kicker mb-6">Jokers Group &bull; Geelong</p>
+          <p className="kicker mb-6">{content.hero_kicker}</p>
           <h1 className="display text-[2.75rem] font-bold uppercase text-white sm:text-[3.5rem] md:text-[4.5rem] lg:text-[5rem] xl:text-[5.5rem]">
-            Make your brand<br />
-            <span className="gradient-text">impossible to ignore.</span>
+            {content.hero_title}<br />
+            <span className="gradient-text">{content.hero_accent}</span>
           </h1>
           <p className="mt-7 max-w-[520px] text-base leading-7 text-white/70 md:text-[17px]">
             Signage, uniforms, vehicle graphics, merchandise, stickers and print — all under one roof.
@@ -162,10 +181,10 @@ function Hero() {
             <a href="#quote" className="btn btn-primary">Get a Free Quote <ArrowRight size={15} /></a>
             <a href="#work" className="btn btn-outline">View Our Work</a>
           </div>
-          <p className="mt-8 text-xs font-medium uppercase tracking-[0.16em] text-white/50">Proudly serving Geelong &amp; surrounding areas</p>
+          <p className="mt-8 text-xs font-medium uppercase tracking-[0.16em] text-white/50">{content.hero_location}</p>
         </div>
         <div className="relative order-1 h-[220px] overflow-hidden sm:h-[300px] lg:order-2 lg:h-[72vh] lg:min-h-[520px]">
-          <img src={img.heroVehicle} alt="Vinyl vehicle wrap being applied in a workshop" className="h-full w-full object-cover" />
+          <img src={content.hero_image} alt="Vinyl vehicle wrap being applied in a workshop" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/40 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-[#050505]/30" />
         </div>
@@ -174,16 +193,16 @@ function Hero() {
   );
 }
 
-function Services() {
+function Services({ content }: { content: Record<string,string> }) {
   return (
     <section id="services" className="bg-[#0A0A0A] px-5 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-[1400px]">
         <div className="mb-12 max-w-2xl md:mb-16">
-          <p className="kicker mb-4">What we do</p>
-          <h2 className="display text-[2.25rem] font-bold uppercase text-white sm:text-[3rem] lg:text-[3.75rem]">Everything your brand needs.<br />One creative team.</h2>
+          <p className="kicker mb-4">{content.services_kicker}</p>
+          <h2 className="display text-[2.25rem] font-bold uppercase text-white sm:text-[3rem] lg:text-[3.75rem]">{content.services_title}</h2>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          {services.map((s, i) => (
+          {services.map((s, i) => ({...s,title:content[`service_${i+1}_title`]||s.title,copy:content[`service_${i+1}_copy`]||s.copy,image:content[`service_${i+1}_image`]||s.image})).map((s, i) => (
             <article key={s.key} className={`svc-card group ${i < 2 ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
               <div className="relative aspect-[16/10] overflow-hidden">
                 <img src={s.image} alt={`${s.title} by Joker's Group`} loading="lazy" className="card-img h-full w-full object-cover" />
@@ -238,13 +257,13 @@ function Work({ projects, category, setCategory, setLightbox }: { projects: Proj
   );
 }
 
-function Why() {
+function Why({ content }: { content: Record<string,string> }) {
   return (
     <section className="bg-[#0A0A0A] px-5 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-[1400px]">
         <div className="mb-12 md:mb-16">
-          <p className="kicker mb-4">Why us</p>
-          <h2 className="display text-[2.25rem] font-bold uppercase text-white sm:text-[3rem] lg:text-[3.75rem]">Why Jokers?</h2>
+          <p className="kicker mb-4">{content.why_kicker}</p>
+          <h2 className="display text-[2.25rem] font-bold uppercase text-white sm:text-[3rem] lg:text-[3.75rem]">{content.why_title}</h2>
         </div>
         <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-white/[0.06] sm:grid-cols-2 lg:grid-cols-4">
           {whyPoints.map((p) => (
@@ -260,26 +279,26 @@ function Why() {
   );
 }
 
-function Geelong() {
+function Geelong({ content }: { content: Record<string,string> }) {
   return (
     <section className="relative h-[50vh] min-h-[340px] overflow-hidden md:h-[60vh]">
-      <img src={img.geelong} alt="Geelong streetscape at night with illuminated signage" className="absolute inset-0 h-full w-full object-cover" />
+      <img src={content.geelong_image} alt="Geelong streetscape at night with illuminated signage" className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/40" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
       <div className="relative mx-auto flex h-full max-w-[1400px] flex-col justify-center px-5 md:px-8">
-        <p className="kicker mb-4">Proudly Geelong</p>
-        <h2 className="display max-w-2xl text-[2.25rem] font-bold uppercase text-white sm:text-[3rem] lg:text-[4rem]">Local knowledge.<br />Big brand energy.</h2>
+        <p className="kicker mb-4">{content.geelong_kicker}</p>
+        <h2 className="display max-w-2xl text-[2.25rem] font-bold uppercase text-white sm:text-[3rem] lg:text-[4rem]">{content.geelong_title}</h2>
         <p className="mt-5 max-w-[500px] text-sm leading-7 text-white/80">Helping businesses across Geelong and surrounding areas get noticed.</p>
       </div>
     </section>
   );
 }
 
-function CTA() {
+function CTA({ content }: { content: Record<string,string> }) {
   return (
     <section className="relative overflow-hidden bg-[#050505] px-5 py-24 md:px-8 md:py-36">
       <div className="relative mx-auto max-w-[1400px]">
-        <h2 className="display text-[2.5rem] font-bold uppercase text-white sm:text-[3.5rem] lg:text-[5rem]">Got an idea?<br />Let's make it <span className="gradient-text">stand out.</span></h2>
+        <h2 className="display text-[2.5rem] font-bold uppercase text-white sm:text-[3.5rem] lg:text-[5rem]">{content.cta_title}</h2>
         <p className="mt-6 max-w-[500px] text-base leading-7 text-white/70">Tell us what you're looking for and we'll help bring it to life.</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <a href="#quote" className="btn btn-primary">Get a Free Quote <ArrowRight size={15} /></a>
@@ -290,17 +309,17 @@ function CTA() {
   );
 }
 
-function QuoteForm({ submitQuote, submitted, formError }: { submitQuote: (e: FormEvent<HTMLFormElement>) => void; submitted: boolean; formError: string }) {
+function QuoteForm({ submitQuote, submitted, formError, content }: { submitQuote: (e: FormEvent<HTMLFormElement>) => void; submitted: boolean; formError: string; content: Record<string,string> }) {
   return (
     <section id="quote" className="bg-[#0A0A0A] px-5 py-20 md:px-8 md:py-28">
       <div className="mx-auto grid max-w-[1400px] gap-12 lg:grid-cols-[0.45fr_0.55fr] lg:gap-20">
         <div>
-          <p className="kicker mb-4">Start here</p>
-          <h2 className="display text-[2.25rem] font-bold uppercase text-white sm:text-[3rem] lg:text-[3.5rem]">Let's create something that gets noticed.</h2>
+          <p className="kicker mb-4">{content.quote_kicker}</p>
+          <h2 className="display text-[2.25rem] font-bold uppercase text-white sm:text-[3rem] lg:text-[3.5rem]">{content.quote_title}</h2>
           <div className="mt-10 space-y-5 text-sm">
-            <a href="mailto:Rhett.jokersgroup@gmail.com" className="flex items-center gap-3 text-white/80 hover:text-white"><Mail size={16} className="text-[#B9FF00]" /> Rhett.jokersgroup@gmail.com</a>
-            <a href="https://www.facebook.com/Jokersgroup/" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-white/80 hover:text-white"><Facebook size={16} className="text-[#B9FF00]" /> Facebook</a>
-            <p className="flex items-center gap-3 text-white/80"><span className="text-[#B9FF00]">&#9679;</span> Proudly servicing Geelong &amp; surrounding areas</p>
+            <a href={`mailto:${content.email}`} className="flex items-center gap-3 text-white/80 hover:text-white"><Mail size={16} className="text-[#B9FF00]" /> {content.email}</a>
+            <a href={content.facebook} target="_blank" rel="noreferrer" className="flex items-center gap-3 text-white/80 hover:text-white"><Facebook size={16} className="text-[#B9FF00]" /> Facebook</a>
+            <p className="flex items-center gap-3 text-white/80"><span className="text-[#B9FF00]">&#9679;</span> {content.service_area}</p>
           </div>
         </div>
         <form onSubmit={submitQuote} className="grid gap-4 sm:grid-cols-2">
@@ -355,15 +374,15 @@ function QuoteForm({ submitQuote, submitted, formError }: { submitQuote: (e: For
   );
 }
 
-function Footer({ setAdminOpen }: { setAdminOpen: (v: boolean) => void }) {
+function Footer({ setAdminOpen, content }: { setAdminOpen: (v: boolean) => void; content: Record<string,string> }) {
   return (
     <footer id="contact" className="bg-[#050505] px-5 pb-8 pt-16 md:px-8 md:pt-20">
       <div className="mx-auto max-w-[1400px]">
         <div className="mb-12 h-px w-full bg-gradient-to-r from-[#B9FF00] via-[#16D8ED] to-[#087DFF] opacity-30" />
         <div className="grid gap-10 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
           <div>
-            <img src="/assets/images/logos/793580465_2303158203850882_7149715947328454130_n.jpg" alt="Joker's Group Geelong" className="h-10 w-auto object-contain" />
-            <p className="mt-5 max-w-xs text-sm text-white/60">More than just signage.</p>
+            <img src={content.logo_image} alt="Joker's Group Geelong" className="h-10 w-auto object-contain" />
+            <p className="mt-5 max-w-xs text-sm text-white/60">{content.footer_tagline}</p>
           </div>
           <div>
             <p className="kicker mb-5">Explore</p>
@@ -375,8 +394,8 @@ function Footer({ setAdminOpen }: { setAdminOpen: (v: boolean) => void }) {
           </div>
           <div>
             <p className="kicker mb-5">Contact</p>
-            <a href="mailto:Rhett.jokersgroup@gmail.com" className="block break-all text-sm text-white/70 hover:text-white">Rhett.jokersgroup@gmail.com</a>
-            <a href="https://www.facebook.com/Jokersgroup/" target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-2 text-sm text-white/70 hover:text-white"><Facebook size={15} /> Facebook</a>
+            <a href={`mailto:${content.email}`} className="block break-all text-sm text-white/70 hover:text-white">Rhett.jokersgroup@gmail.com</a>
+            <a href={content.facebook} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-2 text-sm text-white/70 hover:text-white"><Facebook size={15} /> Facebook</a>
           </div>
         </div>
         <div className="mt-12 flex flex-col justify-between gap-3 border-t border-white/[0.06] pt-6 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/50 md:flex-row">
@@ -404,7 +423,7 @@ function Lightbox({ project, close }: { project: Project; close: () => void }) {
   );
 }
 
-function AdminPanel({ close }: { close: () => void }) {
+function AdminPanel({ close, content, setContent }: { close: () => void; content: Record<string,string>; setContent: (v: Record<string,string>) => void }) {
   const [mode, setMode] = useState<'login' | 'dashboard'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -412,6 +431,10 @@ function AdminPanel({ close }: { close: () => void }) {
   const [enquiries, setEnquiries] = useState<{ id: string; name: string; email: string; phone: string; service: string; description: string; created_at: string }[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tab, setTab] = useState<'enquiries' | 'portfolio' | 'content'>('enquiries');
+  const [draft, setDraft] = useState<Record<string,string>>(content);
+  const imageKeys = new Set(['logo_image','hero_image','geelong_image','service_1_image','service_2_image','service_3_image','service_4_image','service_5_image']);
+  const saveContent = async () => { try { await saveSiteContent(draft); setContent(draft); setMessage('Website content saved.'); } catch { setMessage('Could not save website content.'); } };
+  const uploadFor = async (key:string,file?:File) => { if(!file)return; try { setMessage('Uploading image...'); const url=await uploadSiteImage(file); setDraft((d)=>({...d,[key]:url})); setMessage('Image uploaded. Click Save Website Changes.'); } catch { setMessage('Image upload failed.'); } };
 
   const login = async (e: FormEvent) => {
     e.preventDefault();
@@ -522,12 +545,30 @@ function AdminPanel({ close }: { close: () => void }) {
             )}
 
             {tab === 'content' && (
-              <div className="space-y-4">
-                <p className="text-sm text-white/60">Content management for hero text, about section, and contact details will be available here. The database structure is ready — connect specific fields as needed.</p>
-                <div className="rounded-lg border border-white/[0.06] p-4">
-                  <p className="kicker mb-2">Site Settings</p>
-                  <p className="text-xs text-white/60">Hero content, about text, and contact info are stored in the database and can be edited here. Extend this panel to add form fields for each setting key.</p>
-                </div>
+              <div className="space-y-5">
+                <p className="text-sm text-white/70">Edit the main website text, contact details and images below. Uploaded images are stored in Cloudflare R2.</p>
+                {[
+                  ['Brand & contact',['logo_image','email','facebook','service_area','footer_tagline']],
+                  ['Hero',['hero_kicker','hero_title','hero_accent','hero_copy','hero_location','hero_image']],
+                  ['Services heading',['services_kicker','services_title']],
+                  ['Service 1',['service_1_title','service_1_copy','service_1_image']],
+                  ['Service 2',['service_2_title','service_2_copy','service_2_image']],
+                  ['Service 3',['service_3_title','service_3_copy','service_3_image']],
+                  ['Service 4',['service_4_title','service_4_copy','service_4_image']],
+                  ['Service 5',['service_5_title','service_5_copy','service_5_image']],
+                  ['Why Jokers',['why_kicker','why_title']],
+                  ['Geelong section',['geelong_kicker','geelong_title','geelong_copy','geelong_image']],
+                  ['Call to action',['cta_title','cta_copy']],
+                  ['Quote section',['quote_kicker','quote_title']]
+                ].map(([section,keys]) => <div key={section as string} className="rounded-lg border border-white/[0.08] p-4">
+                  <p className="kicker mb-4">{section}</p>
+                  <div className="grid gap-3">
+                    {(keys as string[]).map((key) => <label key={key} className="text-[10px] font-semibold uppercase tracking-wider text-white/60">{key.replaceAll('_',' ')}
+                      {imageKeys.has(key) ? <div className="mt-2 grid gap-2"><input value={draft[key]||''} onChange={(e)=>setDraft({...draft,[key]:e.target.value})} className="field" placeholder="Image URL" /><input type="file" accept="image/*" onChange={(e)=>uploadFor(key,e.target.files?.[0])} className="field cursor-pointer" />{draft[key]&&<img src={draft[key]} alt="" className="h-24 w-full rounded object-cover" />}</div> : (key.includes('copy') ? <textarea rows={3} value={draft[key]||''} onChange={(e)=>setDraft({...draft,[key]:e.target.value})} className="field mt-2 resize-y" /> : <input value={draft[key]||''} onChange={(e)=>setDraft({...draft,[key]:e.target.value})} className="field mt-2" />)}
+                    </label>)}
+                  </div>
+                </div>)}
+                <button type="button" onClick={saveContent} className="btn btn-primary">Save Website Changes</button>
               </div>
             )}
 
