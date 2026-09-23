@@ -430,6 +430,7 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
   const [message, setMessage] = useState('');
   const [enquiries, setEnquiries] = useState<{ id: string; name: string; email: string; phone: string; service: string; description: string; created_at: string }[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [tab, setTab] = useState<'enquiries' | 'portfolio' | 'content'>('enquiries');
   const [draft, setDraft] = useState<Record<string,string>>(content);
   const imageKeys = new Set(['logo_image','hero_image','geelong_image','service_1_image','service_2_image','service_3_image','service_4_image','service_5_image']);
@@ -464,6 +465,24 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
     const pj = await supabase.from('portfolio_projects').select('id,title,category,description,image_url,alt_text').order('created_at', { ascending: false });
     if (pj.data) setProjects(pj.data as Project[]);
     (e.currentTarget as HTMLFormElement).reset();
+  };
+
+  const saveProjectEdit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingProject) return;
+    const f = new FormData(e.currentTarget as HTMLFormElement);
+    let imageUrl = editingProject.image_url;
+    const imageFile = f.get('image_file');
+    if (imageFile instanceof File && imageFile.size) {
+      try { setMessage('Uploading replacement image...'); imageUrl = await uploadSiteImage(imageFile); }
+      catch { setMessage('Could not upload replacement image.'); return; }
+    }
+    const updated = { ...editingProject, title: String(f.get('title') || ''), category: String(f.get('category') || ''), description: String(f.get('description') || ''), alt_text: String(f.get('alt_text') || ''), image_url: imageUrl };
+    const { error } = await supabase.from('portfolio_projects').update(updated);
+    if (error) { setMessage('Could not update project.'); return; }
+    setProjects((items) => items.map((p) => p.id === updated.id ? updated : p));
+    setEditingProject(null);
+    setMessage('Project updated.');
   };
 
   const deleteProject = async (id: string) => {
@@ -555,11 +574,20 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
                           <p className="text-[10px] uppercase tracking-wider text-white/50">{p.category}</p>
                         </div>
                       </div>
-                      <button onClick={() => deleteProject(p.id)} className="text-xs text-red-400/70 hover:text-red-400">Delete</button>
+                      <div className="flex gap-3"><button type="button" onClick={() => setEditingProject(p)} className="text-xs font-semibold text-slate-600 hover:text-slate-900">Edit</button><button type="button" onClick={() => deleteProject(p.id)} className="text-xs text-red-400/70 hover:text-red-400">Delete</button></div>
                     </div>
                   ))}
                   {!projects.length && <p className="text-sm text-white/50">No projects yet.</p>}
                 </div>
+                {editingProject && <form onSubmit={saveProjectEdit} className="mt-6 grid gap-3 rounded-lg border border-slate-300 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between"><p className="kicker">Edit Our Work Project</p><button type="button" onClick={()=>setEditingProject(null)} className="text-xs font-semibold text-slate-500">Cancel</button></div>
+                  <input name="title" defaultValue={editingProject.title} className="field" placeholder="Project title" />
+                  <select name="category" defaultValue={editingProject.category} className="field"><option>Business Signage</option><option>Vehicle Graphics</option><option>Custom Signs</option><option>Apparel & DTF</option><option>Stickers & Decals</option><option>Promotional Products</option></select>
+                  <div className="grid gap-2"><img src={editingProject.image_url} alt={editingProject.alt_text} className="h-36 w-full rounded-lg object-cover" /><label className="text-[10px] font-semibold uppercase tracking-wider">Replace image (optional)<input name="image_file" type="file" accept="image/*" className="field mt-2 cursor-pointer" /></label></div>
+                  <input name="alt_text" defaultValue={editingProject.alt_text} className="field" placeholder="Alt text" />
+                  <textarea name="description" defaultValue={editingProject.description} rows={3} className="field resize-y" placeholder="Short description" />
+                  <button className="btn btn-primary w-fit">Save Project Changes</button>
+                </form>}
               </div>
             )}
 
