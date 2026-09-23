@@ -135,7 +135,7 @@ function App() {
 function Header({ menuOpen, setMenuOpen, scrolled, setAdminOpen, content }: { menuOpen: boolean; setMenuOpen: (v: boolean) => void; scrolled: boolean; setAdminOpen: (v: boolean) => void; content: Record<string,string> }) {
   const links: [string, string][] = [['Home', 'top'], ['Services', 'services'], ['Our Work', 'work'], ['Contact', 'contact']];
   return (
-    <header className={`fixed top-0 z-40 w-full transition-all duration-300 ${scrolled ? 'bg-black/85 backdrop-blur-lg border-b border-white/[0.06]' : 'bg-transparent'}`}>
+    <header className={`fixed top-0 z-40 w-full transition-all duration-300 ${scrolled ? 'bg-black/85 backdrop-blur-lg border-b border-slate-200' : 'bg-transparent'}`}>
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-5 md:px-8">
         <a href="#top" className="flex items-center">
           <img src={content.logo_image} alt="Joker's Group Geelong" className="h-11 w-auto object-contain" />
@@ -153,7 +153,7 @@ function Header({ menuOpen, setMenuOpen, scrolled, setAdminOpen, content }: { me
         </div>
       </div>
       {menuOpen && (
-        <div className="border-t border-white/[0.06] bg-black/95 px-5 py-6 lg:hidden">
+        <div className="border-t border-slate-200 bg-black/95 px-5 py-6 lg:hidden">
           {links.map(([label, id]) => (
             <a key={id} href={`#${id}`} onClick={() => setMenuOpen(false)} className="block py-3.5 text-sm font-semibold uppercase tracking-wider text-white/80">{label}</a>
           ))}
@@ -265,7 +265,7 @@ function Why({ content }: { content: Record<string,string> }) {
           <p className="kicker mb-4">{content.why_kicker}</p>
           <h2 className="display text-[2.25rem] font-bold uppercase text-white sm:text-[3rem] lg:text-[3.75rem]">{content.why_title}</h2>
         </div>
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-white/[0.06] sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-slate-200 sm:grid-cols-2 lg:grid-cols-4">
           {whyPoints.map((p) => (
             <div key={p.num} className="bg-[#0B0B0B] p-6 md:p-8">
               <span className="font-mono text-xs text-white/40">{p.num}</span>
@@ -398,7 +398,7 @@ function Footer({ setAdminOpen, content }: { setAdminOpen: (v: boolean) => void;
             <a href={content.facebook} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-2 text-sm text-white/70 hover:text-white"><Facebook size={15} /> Facebook</a>
           </div>
         </div>
-        <div className="mt-12 flex flex-col justify-between gap-3 border-t border-white/[0.06] pt-6 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/50 md:flex-row">
+        <div className="mt-12 flex flex-col justify-between gap-3 border-t border-slate-200 pt-6 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/50 md:flex-row">
           <span>&copy; Joker's Group Geelong. All Rights Reserved.</span>
           <button onClick={() => setAdminOpen(true)} className="text-left hover:text-white/80 md:text-right">Owner Login</button>
         </div>
@@ -453,8 +453,12 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
     e.preventDefault();
     const f = new FormData(e.currentTarget as HTMLFormElement);
     const v = Object.fromEntries(f.entries());
-    if (!v.title || !v.image_url) { setMessage('Title and image URL are required.'); return; }
-    const { error } = await supabase.from('portfolio_projects').insert({ title: v.title, category: v.category, description: v.description ?? '', image_url: v.image_url, alt_text: v.alt_text ?? '' });
+    const imageFile = f.get('image_file');
+    if (!v.title || !(imageFile instanceof File) || !imageFile.size) { setMessage('Title and project image are required.'); return; }
+    setMessage('Uploading project image...');
+    let imageUrl = '';
+    try { imageUrl = await uploadSiteImage(imageFile); } catch { setMessage('Could not upload project image.'); return; }
+    const { error } = await supabase.from('portfolio_projects').insert({ title: v.title, category: v.category, description: v.description ?? '', image_url: imageUrl, alt_text: v.alt_text ?? '' });
     if (error) { setMessage('Could not add project.'); return; }
     setMessage('Project added.');
     const pj = await supabase.from('portfolio_projects').select('id,title,category,description,image_url,alt_text').order('created_at', { ascending: false });
@@ -470,8 +474,8 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
   const signOut = async () => { await supabase.auth.signOut(); close(); };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/95 p-4 backdrop-blur-sm md:p-8">
-      <div className="mx-auto max-w-4xl rounded-xl border border-white/10 bg-[#0B0B0B] p-6 md:p-10">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-100 p-4 md:p-8">
+      <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xl md:p-10">
         <div className="flex items-start justify-between">
           <div>
             <p className="kicker">Joker's Group / Owner Area</p>
@@ -490,7 +494,7 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
           </form>
         ) : (
           <div className="mt-8">
-            <div className="mb-6 flex gap-1 border-b border-white/[0.06] pb-1">
+            <div className="mb-6 flex gap-1 border-b border-slate-200 pb-1">
               {(['enquiries', 'portfolio', 'content'] as const).map((t) => (
                 <button key={t} onClick={() => setTab(t)} className={`px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition ${tab === t ? 'text-[#B9FF00]' : 'text-white/50 hover:text-white/80'}`}>{t}</button>
               ))}
@@ -499,7 +503,7 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
             {tab === 'enquiries' && (
               <div className="space-y-3">
                 {enquiries.length ? enquiries.map((enq) => (
-                  <div key={enq.id} className="rounded-lg border border-white/[0.06] p-4">
+                  <div key={enq.id} className="rounded-lg border border-slate-200 p-4">
                     <div className="flex flex-wrap justify-between gap-2">
                       <strong className="text-sm text-white">{enq.name}</strong>
                       <span className="text-[10px] uppercase tracking-wider text-[#B9FF00]">{enq.service}</span>
@@ -515,20 +519,22 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
 
             {tab === 'portfolio' && (
               <div>
-                <form onSubmit={addProject} className="mb-6 grid gap-3 rounded-lg border border-white/[0.06] p-4">
+                <form onSubmit={addProject} className="mb-6 grid gap-3 rounded-lg border border-slate-200 p-4">
                   <p className="kicker">Add Project</p>
                   <input name="title" placeholder="Project title *" className="field" />
                   <select name="category" className="field">
                     <option>Business Signage</option><option>Vehicle Graphics</option><option>Custom Signs</option><option>Apparel & DTF</option><option>Stickers & Decals</option><option>Promotional Products</option>
                   </select>
-                  <input name="image_url" placeholder="Image URL *" className="field" />
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-white/60">Project image *
+                    <input name="image_file" type="file" accept="image/*" required className="field mt-2 cursor-pointer" />
+                  </label>
                   <input name="alt_text" placeholder="Alt text (accessibility)" className="field" />
                   <textarea name="description" placeholder="Short description" rows={2} className="field resize-y" />
                   <button className="btn btn-primary w-fit">Add Project</button>
                 </form>
                 <div className="space-y-2">
                   {projects.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between rounded-lg border border-white/[0.06] p-3">
+                    <div key={p.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
                       <div className="flex items-center gap-3">
                         <img src={p.image_url} alt={p.alt_text} className="h-12 w-12 rounded object-cover" />
                         <div>
@@ -560,11 +566,11 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
                   ['Geelong section',['geelong_kicker','geelong_title','geelong_copy','geelong_image']],
                   ['Call to action',['cta_title','cta_copy']],
                   ['Quote section',['quote_kicker','quote_title']]
-                ].map(([section,keys]) => <div key={section as string} className="rounded-lg border border-white/[0.08] p-4">
+                ].map(([section,keys]) => <div key={section as string} className="rounded-lg border border-slate-200 p-4">
                   <p className="kicker mb-4">{section}</p>
                   <div className="grid gap-3">
                     {(keys as string[]).map((key) => <label key={key} className="text-[10px] font-semibold uppercase tracking-wider text-white/60">{key.replaceAll('_',' ')}
-                      {imageKeys.has(key) ? <div className="mt-2 grid gap-2"><input value={draft[key]||''} onChange={(e)=>setDraft({...draft,[key]:e.target.value})} className="field" placeholder="Image URL" /><input type="file" accept="image/*" onChange={(e)=>uploadFor(key,e.target.files?.[0])} className="field cursor-pointer" />{draft[key]&&<img src={draft[key]} alt="" className="h-24 w-full rounded object-cover" />}</div> : (key.includes('copy') ? <textarea rows={3} value={draft[key]||''} onChange={(e)=>setDraft({...draft,[key]:e.target.value})} className="field mt-2 resize-y" /> : <input value={draft[key]||''} onChange={(e)=>setDraft({...draft,[key]:e.target.value})} className="field mt-2" />)}
+                      {imageKeys.has(key) ? <div className="mt-2 grid gap-2"><input type="file" accept="image/*" onChange={(e)=>uploadFor(key,e.target.files?.[0])} className="field cursor-pointer" />{draft[key]&&<img src={draft[key]} alt="" className="h-24 w-full rounded object-cover" />}</div> : (key.includes('copy') ? <textarea rows={3} value={draft[key]||''} onChange={(e)=>setDraft({...draft,[key]:e.target.value})} className="field mt-2 resize-y" /> : <input value={draft[key]||''} onChange={(e)=>setDraft({...draft,[key]:e.target.value})} className="field mt-2" />)}
                     </label>)}
                   </div>
                 </div>)}
