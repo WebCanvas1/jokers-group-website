@@ -72,6 +72,17 @@ class QueryBuilder {
   select(_columns = '*') { this.action = 'select'; return this; }
   insert(payload: Row | Row[]) { this.action = 'insert'; this.payload = payload; return this; }
   delete() { this.action = 'delete'; return this; }
+  async update(payload: Row) {
+    try {
+      if (!('id' in payload)) throw new Error('Update requires an id');
+      const id = String(payload.id);
+      const body = { ...payload }; delete body.id;
+      const result = await request(`/${this.table}/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) });
+      return { data: result.data ?? null, error: null };
+    } catch (error) {
+      return { data: null, error: error instanceof Error ? error : new Error('Request failed') };
+    }
+  }
   eq(column: string, value: unknown) { this.filter = { column, value }; return this.execute(); }
   order(_column: string, _options?: { ascending?: boolean }) { return this.execute(); }
   then(resolve: (value: { data: unknown; error: Error | null }) => unknown, reject?: (reason: unknown) => unknown) { return this.execute().then(resolve, reject); }
