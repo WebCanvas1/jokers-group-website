@@ -48,7 +48,8 @@ async function api(request: Request, env: Env, url: URL) {
     if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD || !env.SESSION_SECRET) return json({ error: 'Admin login is not configured' }, 503);
     const suppliedEmail = (body.email || '').trim().toLowerCase();
     const configuredEmail = env.ADMIN_EMAIL.trim().toLowerCase();
-    if (suppliedEmail !== configuredEmail || body.password !== env.ADMIN_PASSWORD) return json({ error: 'Invalid login' }, 401);
+    if (suppliedEmail !== configuredEmail) return json({ error: 'Email does not match the configured admin email' }, 401);
+    if (body.password !== env.ADMIN_PASSWORD) return json({ error: 'Password does not match the configured admin password' }, 401);
     return json({ token: await makeToken(env.ADMIN_EMAIL, env.SESSION_SECRET) });
   }
 
