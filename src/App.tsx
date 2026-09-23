@@ -66,7 +66,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [category, setCategory] = useState<Category>('All');
-  const [projects, setProjects] = useState<Project[]>(starterProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [lightbox, setLightbox] = useState<Project | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
@@ -82,10 +82,7 @@ function App() {
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from('portfolio_projects').select('id,title,category,description,image_url,alt_text').order('created_at', { ascending: false });
-      if (data?.length) {
-        const savedProjects = (data as Project[]).filter((project) => !starterProjects.some((starter) => starter.title === project.title));
-        setProjects([...starterProjects, ...savedProjects]);
-      }
+      setProjects((data as Project[] | null) ?? []);
     };
     load();
     getSiteContent().then((saved) => setContent((current) => ({...current,...saved}))).catch(() => {});
@@ -127,7 +124,7 @@ function App() {
       </main>
       <Footer setAdminOpen={setAdminOpen} content={content} />
       {lightbox && <Lightbox project={lightbox} close={() => setLightbox(null)} />}
-      {adminOpen && <AdminPanel close={() => setAdminOpen(false)} content={content} setContent={setContent} />}
+      {adminOpen && <AdminPanel close={() => setAdminOpen(false)} content={content} setContent={setContent} starterProjects={starterProjects} />}
     </div>
   );
 }
@@ -423,7 +420,7 @@ function Lightbox({ project, close }: { project: Project; close: () => void }) {
   );
 }
 
-function AdminPanel({ close, content, setContent }: { close: () => void; content: Record<string,string>; setContent: (v: Record<string,string>) => void }) {
+function AdminPanel({ close, content, setContent, starterProjects }: { close: () => void; content: Record<string,string>; setContent: (v: Record<string,string>) => void; starterProjects: Project[] }) {
   const [mode, setMode] = useState<'login' | 'dashboard'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -447,7 +444,18 @@ function AdminPanel({ close, content, setContent }: { close: () => void; content
     const eq = await supabase.from('quote_enquiries').select('id,name,email,phone,service,description,created_at').order('created_at', { ascending: false });
     if (eq.data) setEnquiries(eq.data);
     const pj = await supabase.from('portfolio_projects').select('id,title,category,description,image_url,alt_text').order('created_at', { ascending: false });
-    if (pj.data) setProjects(pj.data as Project[]);
+    if (pj.data) {
+      let loaded = pj.data as Project[];
+      if (!loaded.length) {
+        setMessage('Setting up the existing Our Work projects...');
+        for (const p of starterProjects) {
+          await supabase.from('portfolio_projects').insert({ title:p.title, category:p.category, description:p.description, image_url:p.image_url, alt_text:p.alt_text });
+        }
+        const seeded = await supabase.from('portfolio_projects').select('id,title,category,description,image_url,alt_text').order('created_at', { ascending: false });
+        loaded = (seeded.data as Project[]) || [];
+      }
+      setProjects(loaded);
+    }
   };
 
   const addProject = async (e: FormEvent) => {
