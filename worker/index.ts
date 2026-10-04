@@ -92,10 +92,11 @@ async function api(request: Request, env: Env, url: URL) {
   if (path === '/api/portfolio_projects' && request.method === 'POST') {
     if (!(await isAdmin(request, env))) return json({ error: 'Unauthorised' }, 401);
     const b = await request.json<Record<string, string>>();
-    const id = crypto.randomUUID();
-    await env.DB.prepare('INSERT INTO portfolio_projects (id,title,category,description,image_url,alt_text) VALUES (?,?,?,?,?,?)')
-      .bind(id, b.title || '', b.category || 'Business Signage', b.description || '', b.image_url || '', b.alt_text || '').run();
-    return json({ data: { id, ...b } }, 201);
+    // Production D1 was originally created with an INTEGER id column. Let SQLite
+    // allocate the id instead of inserting a UUID, which causes SQLITE_MISMATCH.
+    const result = await env.DB.prepare('INSERT INTO portfolio_projects (title,category,description,image_url,alt_text) VALUES (?,?,?,?,?)')
+      .bind(b.title || '', b.category || 'Business Signage', b.description || '', b.image_url || '', b.alt_text || '').run();
+    return json({ data: { id: String(result.meta.last_row_id), ...b } }, 201);
   }
 
   if (path.startsWith('/api/portfolio_projects/') && request.method === 'PUT') {
