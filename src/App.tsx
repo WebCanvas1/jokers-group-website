@@ -433,7 +433,7 @@ function AdminPanel({ close, content, setContent, starterProjects }: { close: ()
   const [tab, setTab] = useState<'enquiries' | 'portfolio' | 'content'>('enquiries');
   const [draft, setDraft] = useState<Record<string,string>>(content);
   const imageKeys = new Set(['logo_image','hero_image','geelong_image','service_1_image','service_2_image','service_3_image','service_4_image','service_5_image']);
-  const saveContent = async () => { try { await saveSiteContent(draft); setContent(draft); setMessage('Website content saved.'); } catch { setMessage('Could not save website content.'); } };
+  const saveContent = async () => { try { await saveSiteContent(draft); setContent(draft); setMessage('Website content saved.'); } catch (error) { setMessage(`Could not save website content: ${error instanceof Error ? error.message : 'Unknown error'}`); } };
   const uploadFor = async (key:string,file?:File) => { if(!file)return; try { setMessage('Uploading image...'); const url=await uploadSiteImage(file); setDraft((d)=>({...d,[key]:url})); setMessage('Image uploaded. Click Save Website Changes.'); } catch { setMessage('Image upload failed.'); } };
 
   const login = async (e: FormEvent) => {
@@ -477,7 +477,7 @@ function AdminPanel({ close, content, setContent, starterProjects }: { close: ()
     let imageUrl = '';
     try { imageUrl = await uploadSiteImage(imageFile); } catch { setMessage('Could not upload project image.'); return; }
     const { error } = await supabase.from('portfolio_projects').insert({ title: v.title, category: v.category, description: v.description ?? '', image_url: imageUrl, alt_text: v.alt_text ?? '' });
-    if (error) { setMessage('Could not add project.'); return; }
+    if (error) { setMessage(`Could not add project: ${error.message}`); return; }
     setMessage('Project added.');
     const pj = await supabase.from('portfolio_projects').select('id,title,category,description,image_url,alt_text').order('created_at', { ascending: false });
     if (pj.data) setProjects(pj.data as Project[]);
@@ -496,7 +496,7 @@ function AdminPanel({ close, content, setContent, starterProjects }: { close: ()
     }
     const updated = { ...editingProject, title: String(f.get('title') || ''), category: String(f.get('category') || ''), description: String(f.get('description') || ''), alt_text: String(f.get('alt_text') || ''), image_url: imageUrl };
     const { error } = await supabase.from('portfolio_projects').update(updated);
-    if (error) { setMessage('Could not update project.'); return; }
+    if (error) { setMessage(`Could not update project: ${error.message}`); return; }
     setProjects((items) => items.map((p) => p.id === updated.id ? updated : p));
     setEditingProject(null);
     setMessage('Project updated.');
