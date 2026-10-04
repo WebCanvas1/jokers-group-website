@@ -164,7 +164,15 @@ async function api(request: Request, env: Env, url: URL) {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname.startsWith('/api/')) return api(request, env, url);
+    if (url.pathname.startsWith('/api/')) {
+      try {
+        return await api(request, env, url);
+      } catch (error) {
+        console.error('API error', error);
+        const message = error instanceof Error ? error.message : String(error);
+        return json({ error: message || 'Internal server error' }, 500);
+      }
+    }
     if (url.pathname.startsWith('/media/') && request.method === 'GET') {
       if (!env.IMAGES) return new Response('Image storage is not configured', { status: 404 });
       const key = decodeURIComponent(url.pathname.slice('/media/'.length));
