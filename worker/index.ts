@@ -40,8 +40,16 @@ async function isAdmin(request: Request, env: Env) {
   } catch { return false; }
 }
 
+async function ensureSiteContentTable(env: Env) {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS site_content (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '')").run();
+}
+
 async function api(request: Request, env: Env, url: URL) {
   const path = url.pathname;
+
+  // The production D1 database predates the site-content CMS table.
+  // Create it lazily so existing deployments self-migrate without a manual D1 step.
+  if (path === '/api/site_content') await ensureSiteContentTable(env);
 
   if (path === '/api/login' && request.method === 'POST') {
     const body = await request.json<{ email?: string; password?: string }>();
